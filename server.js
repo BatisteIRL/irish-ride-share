@@ -13,9 +13,9 @@ const io = socketIo(server);
 app.use(bodyParser.json());
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, { 
-  useNewUrlParser: true, 
-  useUnifiedTopology: true 
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true });
 }).then(() => {
   console.log('Connected to MongoDB');
 }).catch(err => {
@@ -99,10 +99,7 @@ app.post('/api/login', async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email });
     if (user && await bcrypt.compare(req.body.password, user.password)) {
-      const token = jwt.sign(
-        { id: user._id, email: user.email }, 
-        process.env.JWT_SECRET, 
-        { expiresIn: '24h' }
+     process.env.JWT_SECRET
       );
       res.json({ 
         token, 
