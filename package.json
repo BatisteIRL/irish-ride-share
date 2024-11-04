@@ -1,17 +1,20 @@
 {
   "name": "irish-ride-share-backend",
   "version": "1.0.0",
+  "description": "Backend for Irish Ride Share app",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.17.1",
-    "mongoose": "^5.12.3",
-    "body-parser": "^1.19.0",
+    "socket.io": "^4.2.0",
+    "mongoose": "^5.13.7",
     "bcrypt": "^5.0.1",
     "jsonwebtoken": "^8.5.1",
-    "socket.io": "^4.0.1",
-    "expo-server-sdk": "^3.6.0"
+    "cors": "^2.8.5",
+    "express-validator": "^6.12.1",
+    "winston": "^3.3.3",
+    "express-rate-limit": "^5.3.0"
   }
 }
