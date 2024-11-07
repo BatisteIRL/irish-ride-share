@@ -45,15 +45,15 @@ if (process.env.NODE_ENV !== 'production') {
     format: winston.format.simple(),
   }));
 }
-console.log("MongoDB URI from environment:", process.env.MONGODB_URI);
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI, { 
+
+// MongoDB connection - direct connection for testing
+mongoose.connect('mongodb+srv://batistepasquet:sl51jDbkht46B9gN@irishrideshare.se1gi.mongodb.net/?retryWrites=true&w=majority&appName=IrishRideShare', { 
   useNewUrlParser: true, 
   useUnifiedTopology: true 
 }).then(() => {
-  logger.info('Connected to MongoDB');
+  console.log('Connected to MongoDB');
 }).catch(err => {
-  logger.error('MongoDB connection error:', err);
+  console.error('MongoDB connection error:', err);
 });
 
 // Schemas
@@ -262,15 +262,4 @@ app.put('/api/users/profile', authenticateJWT, [
   }
 
   try {
-    const user = await User.findByIdAndUpdate(req.user.id, req.body, { new: true }).select('-password');
-    res.json(user);
-  } catch (error) {
-    logger.error('Update profile error:', error);
-    res.status(500).send({ message: 'Error updating user profile' });
-  }
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  logger.info(`Server is running on port ${PORT}`);
-});
+    const user = await User.findByIdAndUpdate
