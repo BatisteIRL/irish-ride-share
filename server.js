@@ -13,7 +13,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: process.env.CORS_ORIGIN || '*', // Ensure this matches your frontend origin
+    origin: process.env.CORS_ORIGIN || '*',
     methods: ['GET', 'POST'],
   },
 });
@@ -24,8 +24,8 @@ app.use(cors({ origin: process.env.CORS_ORIGIN }));
 
 // Rate limiting
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100
 });
 app.use(apiLimiter);
 
@@ -189,77 +189,7 @@ app.get('/api/rides', authenticateJWT, async (req, res) => {
   }
 });
 
-app.post('/api/rides', authenticateJWT, [
-  body('from').notEmpty(),
-  body('to').notEmpty(),
-  body('date').isISO8601(),
-  body('price').isFloat({ min: 0 }),
-  body('seats').isInt({ min: 1 })
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  try {
-    const ride = new Ride({
-      driverId: req.user.id,
-      ...req.body,
-      availableSeats: req.body.seats
-    });
-    await ride.save();
-    res.status(201).json(ride);
-  } catch (error) {
-    logger.error('Create ride error:', error);
-    res.status(500).send({ message: 'Error creating ride' });
-  }
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  logger.info(`Server is running on port ${PORT}`);
 });
-
-app.post('/api/rides/:id/book', authenticateJWT, async (req, res) => {
-  try {
-    const ride = await Ride.findById(req.params.id);
-    if (!ride || ride.availableSeats === 0) {
-      return res.status(400).send({ message: 'Ride not available' });
-    }
-    ride.passengers.push(req.user.id);
-    ride.availableSeats--;
-    await ride.save();
-    
-    const driver = await User.findById(ride.driverId);
-    if (driver && driver.expoPushToken) {
-      // Implement push notification logic here
-    }
-    
-    io.to(ride.driverId.toString()).emit('rideBooked', { rideId: ride._id, passengerId: req.user.id });
-    
-    res.json(ride);
-  } catch (error) {
-    logger.error('Book ride error:', error);
-    res.status(500).send({ message: 'Error booking ride' });
-  }
-});
-
-app.get('/api/users/profile', authenticateJWT, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select('-password');
-    if (!user) {
-      return res.status(404).send({ message: 'User not found' });
-    }
-    res.json(user);
-  } catch (error) {
-    logger.error('Fetch profile error:', error);
-    res.status(500).send({ message: 'Error fetching user profile' });
-  }
-});
-
-app.put('/api/users/profile', authenticateJWT, [
-  body('name').optional().notEmpty(),
-  body('isDriver').optional().isBoolean()
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  try {
-    const user = await User.findByIdAndUpdate
