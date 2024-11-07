@@ -11,7 +11,12 @@ const rateLimit = require('express-rate-limit');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.CORS_ORIGIN || '*', // Ensure this matches your frontend origin
+    methods: ['GET', 'POST'],
+  },
+});
 
 // Middleware
 app.use(express.json());
@@ -220,13 +225,11 @@ app.post('/api/rides/:id/book', authenticateJWT, async (req, res) => {
     ride.availableSeats--;
     await ride.save();
     
-    // Send push notification to the driver
     const driver = await User.findById(ride.driverId);
     if (driver && driver.expoPushToken) {
       // Implement push notification logic here
     }
     
-    // Emit event to driver
     io.to(ride.driverId.toString()).emit('rideBooked', { rideId: ride._id, passengerId: req.user.id });
     
     res.json(ride);
