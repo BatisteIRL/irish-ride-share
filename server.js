@@ -46,13 +46,16 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
-// MongoDB connection - direct connection for testing
+// MongoDB connection
 mongoose.connect('mongodb+srv://batistepasquet:sl51jDbkht46B9gN@irishrideshare.se1gi.mongodb.net/?retryWrites=true&w=majority&appName=IrishRideShare', { 
   useNewUrlParser: true, 
-  useUnifiedTopology: true 
-}).then(() => {
+  useUnifiedTopology: true,
+  useCreateIndex: true, // Explicitly set to handle ensureIndex deprecation
+})
+.then(() => {
   console.log('Connected to MongoDB');
-}).catch(err => {
+})
+.catch(err => {
   console.error('MongoDB connection error:', err);
 });
 
@@ -186,6 +189,87 @@ app.get('/api/rides', authenticateJWT, async (req, res) => {
   } catch (error) {
     logger.error('Fetch rides error:', error);
     res.status(500).send({ message: 'Error fetching rides' });
+  }
+});
+
+app.post('/api/rides', authenticateJWT, [
+  body('from').notEmpty(),
+  body('to').notEmpty(),
+  body('date').isISO8601(),
+  body('price').isFloat({ min: 0 }),
+  body('seats').isInt({ min: 1 })
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  try {
+    const ride = new Ride({
+      driverId: req.user.id,
+      ...req.body,
+      availableSeats: req.body.seats
+    });
+    await ride.save();
+    res.status(201).json(ride);
+  } catch (error) {
+    logger.error('Create ride error:', error);
+    res.status(500).send({ message: 'Error creating ride' });
+  }
+});
+
+app.post('/api/rides/:id/book', authenticateJWT, async (req, res) => {
+  try {
+    const ride = await Ride.findById(req.params.id);
+    if (!ride || ride.availableSeats === 0) {
+      return res.status(400).send({ message: 'Ride not available' });
+    }
+    ride.passengers.push(req.user.id);
+    ride.availableSeats--;
+    await ride.save();
+    
+    const driver = await User.findById(ride.driverId);
+    if (driver && driver.expoPushToken) {
+      // Implement push notification logic here
+    }
+    
+    io.to(ride.driverId.toString()).emit('rideBooked', { rideId: ride._id, passengerId: req.user.id });
+    
+    res.json(ride);
+  } catch (error) {
+    logger.error('Book ride error:', error);
+    res.status(500).send({ message: 'Error booking ride' });
+  }
+});
+
+app.get('/api/users/profile', authenticateJWT, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).send({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    logger.error('Fetch profile error:', error);
+    res.status(500).send({ message: 'Error fetching user profile' });
+  }
+});
+
+app.put('/api/users/profile', authenticateJWT, [
+  body('name').optional().notEmpty(),
+  body('isDriver').optional().isBoolean()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  try {
+    const user = await User.findByIdAndUpdate(req.user.id, req.body, { new: true }).select('-password');
+    res.json(user);
+  } catch (error) {
+    logger.error('Update profile error:', error);
+    res.status(500).send({ message: 'Error updating user profile' });
   }
 });
 
