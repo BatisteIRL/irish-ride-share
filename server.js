@@ -45,7 +45,7 @@ if (process.env.NODE_ENV !== 'production') {
     format: winston.format.simple(),
   }));
 }
-
+console.log("MongoDB URI from environment:", process.env.MONGODB_URI);
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI, { 
   useNewUrlParser: true, 
